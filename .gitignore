@@ -1,0 +1,21 @@
+# Binaries
+/bin/
+/dist/
+calcassist
+calcassist.exe
+*.exe
+
+# Go
+*.test
+*.out
+coverage*
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local config that may contain secrets
+config.yaml
+/config.local.yaml

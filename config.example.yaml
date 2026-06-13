@@ -1,0 +1,44 @@
+# calcassist configuration example
+#
+# Default location: ~/.calcassist/config.yaml
+# Environment variables override non-empty file values:
+#   CALCASSIST_PROVIDER, CALCASSIST_MODEL, CALCASSIST_API_KEY,
+#   CALCASSIST_BASE_URL, CALCASSIST_MAX_TOKENS, CALCASSIST_TEMPERATURE
+# If api_key is blank, provider-specific keys are also checked:
+#   OPENAI_API_KEY, AZURE_OPENAI_API_KEY, ANTHROPIC_API_KEY
+
+provider: openai # azure | openai | anthropic
+model: gpt-5-mini
+api_key: "" # Prefer an environment variable instead of storing secrets in this file.
+base_url: "" # Blank uses the provider default where available.
+max_tokens: 4096
+temperature: 0.2
+max_tool_iterations: 12
+
+# Azure OpenAI example:
+# provider: azure
+# model: my-deployment-name # Azure model is the deployment name.
+# api_key: ""
+# base_url: https://<resource>.openai.azure.com/openai/v1
+# max_tokens: 4096
+# temperature: 0.2
+# max_tool_iterations: 12
+# No api-version is needed for Azure because calcassist uses the /openai/v1/responses path.
+
+# OpenAI example:
+# provider: openai
+# model: gpt-5-mini
+# api_key: ""
+# base_url: "" # Defaults to https://api.openai.com/v1.
+# max_tokens: 4096
+# temperature: 0.2
+# max_tool_iterations: 12
+
+# Anthropic example:
+# provider: anthropic
+# model: claude-sonnet-4-5
+# api_key: ""
+# base_url: "" # Defaults to https://api.anthropic.com.
+# max_tokens: 4096
+# temperature: 0.2
+# max_tool_iterations: 12
