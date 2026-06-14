@@ -89,8 +89,8 @@ func (p *openAIProvider) buildRequest(messages []Message, tools []ToolDef, strea
 	if instructions := systemInstructions(messages); instructions != "" {
 		req["instructions"] = instructions
 	}
-	if len(tools) > 0 {
-		req["tools"] = openAITools(tools)
+	if reqTools := p.openAIRequestTools(tools); len(reqTools) > 0 {
+		req["tools"] = reqTools
 	}
 	if p.cfg.MaxTokens > 0 {
 		req["max_output_tokens"] = p.cfg.MaxTokens
@@ -99,6 +99,16 @@ func (p *openAIProvider) buildRequest(messages []Message, tools []ToolDef, strea
 		req["temperature"] = p.cfg.Temperature
 	}
 	return req
+}
+
+// openAIRequestTools maps the local tools and, when web search is enabled, appends
+// the hosted web_search tool (last) so the model can search the web.
+func (p *openAIProvider) openAIRequestTools(tools []ToolDef) []map[string]any {
+	reqTools := openAITools(tools)
+	if p.cfg.WebSearch {
+		reqTools = append(reqTools, map[string]any{"type": "web_search"})
+	}
+	return reqTools
 }
 
 func openAIInput(messages []Message) []map[string]any {
@@ -157,6 +167,7 @@ func parseOpenAIResponse(r io.Reader) (*Response, error) {
 
 func parseOpenAIOutput(output []json.RawMessage) (*Response, error) {
 	var response Response
+	var citations []Citation
 	for _, raw := range output {
 		var item struct {
 			Type      string          `json:"type"`
@@ -174,6 +185,11 @@ func parseOpenAIOutput(output []json.RawMessage) (*Response, error) {
 			for _, content := range item.Content {
 				if content.Type == "output_text" {
 					response.Text += content.Text
+					for _, a := range content.Annotations {
+						if a.Type == "url_citation" {
+							citations = append(citations, Citation{Title: a.Title, URL: a.URL})
+						}
+					}
 				}
 			}
 		case "function_call":
@@ -182,14 +198,25 @@ func parseOpenAIOutput(output []json.RawMessage) (*Response, error) {
 				id = item.ID
 			}
 			response.ToolCalls = append(response.ToolCalls, ToolCall{ID: id, Name: item.Name, Args: item.Arguments})
+		case "web_search_call":
+			// Hosted web-search invocation; not a client tool call. Ignore.
 		}
 	}
+	response.Citations = dedupeCitations(citations)
+	response.Text = appendSources(response.Text, response.Citations)
 	return &response, nil
 }
 
 type openAIContent struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type        string             `json:"type"`
+	Text        string             `json:"text"`
+	Annotations []openAIAnnotation `json:"annotations"`
+}
+
+type openAIAnnotation struct {
+	Type  string `json:"type"`
+	URL   string `json:"url"`
+	Title string `json:"title"`
 }
 
 func parseOpenAIStream(r io.Reader, onText func(string)) (*Response, error) {

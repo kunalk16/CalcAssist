@@ -119,7 +119,11 @@ the Messages API at `<base_url>/v1/messages`.
   and [`docs/configuration.md`](docs/configuration.md)).
 - Never commit secrets. `config.yaml` is git-ignored. Prefer environment variables:
   `CALCASSIST_API_KEY` (or `OPENAI_API_KEY` / `AZURE_OPENAI_API_KEY` / `ANTHROPIC_API_KEY`).
-- Env overrides: `CALCASSIST_PROVIDER|MODEL|API_KEY|BASE_URL|MAX_TOKENS|TEMPERATURE`.
+- Env overrides: `CALCASSIST_PROVIDER|MODEL|API_KEY|BASE_URL|MAX_TOKENS|TEMPERATURE|WEB_SEARCH`.
+- Web search: set `web_search: true` (or `CALCASSIST_WEB_SEARCH=true`, off by default) to
+  advertise the provider-hosted web search tool (OpenAI/Azure `web_search`, Anthropic
+  `web_search_20250305`); cited sources are appended to the answer. See
+  [`docs/configuration.md`](docs/configuration.md).
 
 ## Conventions
 

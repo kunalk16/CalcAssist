@@ -91,8 +91,16 @@ func (p *anthropicProvider) buildRequest(messages []Message, tools []ToolDef, st
 		return nil, err
 	}
 	req["messages"] = anthropicMessages
-	if len(tools) > 0 {
-		req["tools"] = anthropicTools(tools)
+	reqTools := anthropicTools(tools)
+	if p.cfg.WebSearch {
+		reqTools = append(reqTools, map[string]any{
+			"type":     "web_search_20250305",
+			"name":     "web_search",
+			"max_uses": 5,
+		})
+	}
+	if len(reqTools) > 0 {
+		req["tools"] = reqTools
 	}
 	return req, nil
 }
@@ -155,32 +163,48 @@ func parseAnthropicResponse(r io.Reader) (*Response, error) {
 }
 
 type anthropicContentBlock struct {
-	Type  string          `json:"type"`
-	Text  string          `json:"text"`
-	ID    string          `json:"id"`
-	Name  string          `json:"name"`
-	Input json.RawMessage `json:"input"`
+	Type      string              `json:"type"`
+	Text      string              `json:"text"`
+	ID        string              `json:"id"`
+	Name      string              `json:"name"`
+	Input     json.RawMessage     `json:"input"`
+	Citations []anthropicCitation `json:"citations"`
+}
+
+type anthropicCitation struct {
+	Type  string `json:"type"`
+	URL   string `json:"url"`
+	Title string `json:"title"`
 }
 
 func anthropicBlocksToResponse(blocks []anthropicContentBlock) (*Response, error) {
 	var response Response
+	var citations []Citation
 	for _, block := range blocks {
 		switch block.Type {
 		case "text":
 			response.Text += block.Text
+			for _, c := range block.Citations {
+				citations = append(citations, Citation{Title: c.Title, URL: c.URL})
+			}
 		case "tool_use":
 			args := string(block.Input)
 			if strings.TrimSpace(args) == "" {
 				args = "{}"
 			}
 			response.ToolCalls = append(response.ToolCalls, ToolCall{ID: block.ID, Name: block.Name, Args: args})
+		case "server_tool_use", "web_search_tool_result":
+			// Server-side web search; not a client tool call. Ignore.
 		}
 	}
+	response.Citations = dedupeCitations(citations)
+	response.Text = appendSources(response.Text, response.Citations)
 	return &response, nil
 }
 
 func parseAnthropicStream(r io.Reader, onText func(string)) (*Response, error) {
 	var text strings.Builder
+	var citations []Citation
 	tools := map[int]*streamToolUse{}
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
@@ -205,6 +229,10 @@ func parseAnthropicStream(r io.Reader, onText func(string)) (*Response, error) {
 				Type        string `json:"type"`
 				Text        string `json:"text"`
 				PartialJSON string `json:"partial_json"`
+				Citation    struct {
+					URL   string `json:"url"`
+					Title string `json:"title"`
+				} `json:"citation"`
 			} `json:"delta"`
 		}
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
@@ -221,12 +249,13 @@ func parseAnthropicStream(r io.Reader, onText func(string)) (*Response, error) {
 				text.WriteString(event.Delta.Text)
 				onText(event.Delta.Text)
 			case "input_json_delta":
-				tool := tools[event.Index]
-				if tool == nil {
-					tool = &streamToolUse{}
-					tools[event.Index] = tool
+				// Only accumulate input for client tool_use blocks; server-side
+				// blocks (e.g. server_tool_use) have no entry and are skipped.
+				if tool := tools[event.Index]; tool != nil {
+					tool.args.WriteString(event.Delta.PartialJSON)
 				}
-				tool.args.WriteString(event.Delta.PartialJSON)
+			case "citations_delta":
+				citations = append(citations, Citation{Title: event.Delta.Citation.Title, URL: event.Delta.Citation.URL})
 			}
 		}
 	}
@@ -247,6 +276,8 @@ func parseAnthropicStream(r io.Reader, onText func(string)) (*Response, error) {
 		}
 		response.ToolCalls = append(response.ToolCalls, ToolCall{ID: tool.id, Name: tool.name, Args: args})
 	}
+	response.Citations = dedupeCitations(citations)
+	response.Text = appendSources(response.Text, response.Citations)
 	return response, nil
 }
 

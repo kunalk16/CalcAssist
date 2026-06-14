@@ -17,6 +17,7 @@ A starter file lives at [`config.example.yaml`](../config.example.yaml) in the r
 | `max_tokens` | no | Max output tokens (default `4096`). |
 | `temperature` | no | Sampling temperature (default `0.2`). |
 | `max_tool_iterations` | no | Cap on tool-call rounds per request (default `12`). |
+| `web_search` | no | Enable the provider-hosted web search tool (default `false`). |
 
 ## Environment variables
 
@@ -28,6 +29,7 @@ Non-empty environment variables override the file:
 - `CALCASSIST_BASE_URL`
 - `CALCASSIST_MAX_TOKENS`
 - `CALCASSIST_TEMPERATURE`
+- `CALCASSIST_WEB_SEARCH`
 
 If `api_key` is still empty, CalcAssist falls back to a provider-specific variable:
 
@@ -91,6 +93,24 @@ api_key: ""              # or set ANTHROPIC_API_KEY
 CalcAssist calls the Messages API at `<base_url>/v1/messages` with the
 `x-api-key` and `anthropic-version` headers, and maps tools to Anthropic's
 `tool_use` / `tool_result` blocks.
+
+---
+
+## Web search
+
+Set `web_search: true` (or `CALCASSIST_WEB_SEARCH=true`) to let the model use the
+provider's **hosted** web search tool. It is **off by default**.
+
+- **OpenAI / Azure** advertise the Responses API `web_search` tool.
+- **Anthropic** advertises the Messages API `web_search_20250305` tool.
+
+When the model searches, CalcAssist appends a **Sources** list of the cited URLs to the
+answer.
+
+> The hosted tool must be supported by your configured model/deployment, otherwise the
+> provider may reject the request. In particular, not all **Azure** deployments support
+> `web_search`, and Anthropic requires web search to be enabled for your organization in
+> the Claude Console. Leave `web_search` off if your model does not support it.
 
 ---
 
