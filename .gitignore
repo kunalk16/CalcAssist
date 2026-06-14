@@ -1,8 +1,8 @@
 # Binaries
 /bin/
 /dist/
-calcassist
-calcassist.exe
+/calcassist
+/calcassist.exe
 *.exe
 
 # Go
