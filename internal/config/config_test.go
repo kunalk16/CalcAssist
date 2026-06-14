@@ -16,6 +16,7 @@ base_url: https://example.test/v1
 max_tokens: 1000
 temperature: 0.7
 max_tool_iterations: 3
+web_search: true
 `)
 
 	cfg, err := Load(path)
@@ -26,7 +27,7 @@ max_tool_iterations: 3
 	if cfg.Provider != "openai" || cfg.Model != "gpt-5-mini" || cfg.APIKey != "test-key" || cfg.BaseURL != "https://example.test/v1" {
 		t.Fatalf("Load() config = %+v", cfg)
 	}
-	if cfg.MaxTokens != 1000 || cfg.Temperature != 0.7 || cfg.MaxToolIterations != 3 {
+	if cfg.MaxTokens != 1000 || cfg.Temperature != 0.7 || cfg.MaxToolIterations != 3 || !cfg.WebSearch {
 		t.Fatalf("Load() limits = %+v", cfg)
 	}
 }
@@ -47,6 +48,7 @@ max_tool_iterations: 5
 	t.Setenv("CALCASSIST_BASE_URL", "https://env.example")
 	t.Setenv("CALCASSIST_MAX_TOKENS", "2222")
 	t.Setenv("CALCASSIST_TEMPERATURE", "0.9")
+	t.Setenv("CALCASSIST_WEB_SEARCH", "true")
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -56,8 +58,25 @@ max_tool_iterations: 5
 	if cfg.Provider != "anthropic" || cfg.Model != "env-model" || cfg.APIKey != "env-key" || cfg.BaseURL != "https://env.example" {
 		t.Fatalf("Load() config = %+v", cfg)
 	}
-	if cfg.MaxTokens != 2222 || cfg.Temperature != 0.9 || cfg.MaxToolIterations != 5 {
+	if cfg.MaxTokens != 2222 || cfg.Temperature != 0.9 || cfg.MaxToolIterations != 5 || !cfg.WebSearch {
 		t.Fatalf("Load() limits = %+v", cfg)
+	}
+}
+
+func TestLoadInvalidWebSearchEnv(t *testing.T) {
+	clearEnv(t)
+	path := writeConfig(t, `provider: openai
+model: gpt-5-mini
+api_key: test-key
+`)
+	t.Setenv("CALCASSIST_WEB_SEARCH", "maybe")
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+	if !strings.Contains(err.Error(), "CALCASSIST_WEB_SEARCH") {
+		t.Fatalf("Load() error = %v, want containing CALCASSIST_WEB_SEARCH", err)
 	}
 }
 
@@ -117,6 +136,9 @@ api_key: test-key
 	}
 	if cfg.MaxToolIterations != 12 {
 		t.Fatalf("MaxToolIterations = %d", cfg.MaxToolIterations)
+	}
+	if cfg.WebSearch {
+		t.Fatalf("WebSearch = %v, want false by default", cfg.WebSearch)
 	}
 }
 
@@ -238,6 +260,7 @@ func clearEnv(t *testing.T) {
 		"CALCASSIST_BASE_URL",
 		"CALCASSIST_MAX_TOKENS",
 		"CALCASSIST_TEMPERATURE",
+		"CALCASSIST_WEB_SEARCH",
 		"OPENAI_API_KEY",
 		"AZURE_OPENAI_API_KEY",
 		"ANTHROPIC_API_KEY",

@@ -20,6 +20,7 @@ type Config struct {
 	MaxTokens         int     `yaml:"max_tokens"`
 	Temperature       float64 `yaml:"temperature"`
 	MaxToolIterations int     `yaml:"max_tool_iterations"`
+	WebSearch         bool    `yaml:"web_search"`
 }
 
 // DefaultPath returns the standard calcassist configuration path.
@@ -93,6 +94,13 @@ func (c *Config) applyEnvOverrides() error {
 			return fmt.Errorf("parse CALCASSIST_TEMPERATURE %q: %w", value, err)
 		}
 		c.Temperature = temperature
+	}
+	if value := os.Getenv("CALCASSIST_WEB_SEARCH"); value != "" {
+		webSearch, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("parse CALCASSIST_WEB_SEARCH %q: %w", value, err)
+		}
+		c.WebSearch = webSearch
 	}
 
 	c.applyProviderAPIKeyFallback()
@@ -177,7 +185,7 @@ func (c *Config) Redacted() Config {
 // String returns a redacted, human-readable representation of the configuration.
 func (c *Config) String() string {
 	redacted := c.Redacted()
-	return fmt.Sprintf("provider=%s model=%s api_key=%s base_url=%s max_tokens=%d temperature=%g max_tool_iterations=%d",
+	return fmt.Sprintf("provider=%s model=%s api_key=%s base_url=%s max_tokens=%d temperature=%g max_tool_iterations=%d web_search=%t",
 		redacted.Provider,
 		redacted.Model,
 		redacted.APIKey,
@@ -185,6 +193,7 @@ func (c *Config) String() string {
 		redacted.MaxTokens,
 		redacted.Temperature,
 		redacted.MaxToolIterations,
+		redacted.WebSearch,
 	)
 }
 

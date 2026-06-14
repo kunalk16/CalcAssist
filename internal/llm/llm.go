@@ -51,6 +51,16 @@ type ToolCall struct {
 type Response struct {
 	Text      string
 	ToolCalls []ToolCall
+	// Citations holds the sources gathered from a provider's hosted web-search
+	// tool, in first-seen order with duplicate URLs removed. It is empty unless
+	// web search is enabled and the model cited results.
+	Citations []Citation
+}
+
+// Citation is a single source returned by a provider's hosted web-search tool.
+type Citation struct {
+	Title string
+	URL   string
 }
 
 // Config holds provider-neutral connection settings. The application config is
@@ -69,6 +79,8 @@ type Config struct {
 	MaxTokens int
 	// Temperature controls sampling. Negative means use a provider default.
 	Temperature float64
+	// WebSearch enables the provider's hosted web-search tool when true.
+	WebSearch bool
 }
 
 // Provider is implemented by each LLM backend.

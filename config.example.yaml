@@ -3,7 +3,8 @@
 # Default location: ~/.calcassist/config.yaml
 # Environment variables override non-empty file values:
 #   CALCASSIST_PROVIDER, CALCASSIST_MODEL, CALCASSIST_API_KEY,
-#   CALCASSIST_BASE_URL, CALCASSIST_MAX_TOKENS, CALCASSIST_TEMPERATURE
+#   CALCASSIST_BASE_URL, CALCASSIST_MAX_TOKENS, CALCASSIST_TEMPERATURE,
+#   CALCASSIST_WEB_SEARCH
 # If api_key is blank, provider-specific keys are also checked:
 #   OPENAI_API_KEY, AZURE_OPENAI_API_KEY, ANTHROPIC_API_KEY
 
@@ -14,6 +15,7 @@ base_url: "" # Blank uses the provider default where available.
 max_tokens: 4096
 temperature: 0.2
 max_tool_iterations: 12
+web_search: false # Set true to enable the provider-hosted web search tool (adds sources).
 
 # Azure OpenAI example:
 # provider: azure
